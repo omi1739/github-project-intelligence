@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run typecheck && npm run test && npm run lint && npm run build"
+    "check:dist": "node check-dist.cjs",
+    "verify": "npm run typecheck && npm run test && npm run lint && npm run build && npm run check:dist"
   },
   "dependencies": {
     "react": "^19.3.0",
