@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "GitHub Project Intelligence",
+  "version": "0.1.0",
+  "description": "Turns any GitHub repository into an understandable technical report: stack, structure, health, activity, security and AI-assisted explanation.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Open Project Intelligence",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["src/content/github-detector.ts"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "options_page": "src/options/index.html",
+  "permissions": ["sidePanel", "storage"],
+  "host_permissions": ["https://api.github.com/*", "https://raw.githubusercontent.com/*"],
+  "optional_host_permissions": ["https://*/*"],
+  "minimum_chrome_version": "116"
+}
