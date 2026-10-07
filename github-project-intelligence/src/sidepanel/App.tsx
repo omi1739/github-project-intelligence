@@ -27,14 +27,39 @@ const TABS: { id: ReportTab; label: string }[] = [
   { id: 'security', label: 'Security' },
 ];
 
-async function getActiveRepo(): Promise<RepoRef | null> {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+function repoFromTab(tab?: chrome.tabs.Tab): RepoRef | null {
   if (!tab?.url) return null;
   try {
     return parseRepoPath(new URL(tab.url).pathname);
   } catch {
     return null;
   }
+}
+
+async function getActiveRepo(): Promise<RepoRef | null> {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+
+  const fromUrl = repoFromTab(tab);
+  if (fromUrl) return fromUrl;
+
+  if (tab?.id !== undefined) {
+    try {
+      const response = (await chrome.tabs.sendMessage(tab.id, { type: 'gpi:get-repo' })) as
+        | { ok: boolean; repo?: RepoRef }
+        | undefined;
+      if (response?.ok && response.repo) return response.repo;
+    } catch {
+      /* content script not injected on this page */
+    }
+  }
+
+  const activeTabs = await chrome.tabs.query({ active: true });
+  for (const candidate of activeTabs) {
+    const ref = repoFromTab(candidate);
+    if (ref) return ref;
+  }
+
+  return null;
 }
 
 export default function App() {

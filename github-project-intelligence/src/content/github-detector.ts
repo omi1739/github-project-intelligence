@@ -117,4 +117,13 @@ window.addEventListener('turbo:load', scheduleUpdate);
 window.addEventListener('turbo:before-render', scheduleUpdate);
 document.addEventListener('visibilitychange', scheduleUpdate);
 
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === 'gpi:get-repo') {
+    const ref = parseRepoPath(window.location.pathname);
+    if (ref) sendResponse({ ok: true, repo: ref });
+    else sendResponse({ ok: false });
+  }
+  return undefined;
+});
+
 update();

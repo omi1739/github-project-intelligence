@@ -32,7 +32,7 @@
   },
   "options_page": "src/options/index.html",
   "permissions": ["sidePanel", "storage"],
-  "host_permissions": ["https://api.github.com/*", "https://raw.githubusercontent.com/*"],
+  "host_permissions": ["https://github.com/*", "https://api.github.com/*", "https://raw.githubusercontent.com/*"],
   "optional_host_permissions": ["https://*/*"],
   "minimum_chrome_version": "116"
 }
