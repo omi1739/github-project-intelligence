@@ -11,10 +11,12 @@ export function OptionsApp() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    void getSettings().then((value) => {
-      setSettings(value);
-      setLoaded(true);
-    });
+    void getSettings()
+      .then((value) => {
+        setSettings(value);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
   }, []);
 
   function update(patch: Partial<ExtensionSettings>): void {
@@ -92,10 +94,12 @@ export function OptionsApp() {
         <button
           type="button"
           onClick={() => {
-            void clearCache().then(() => {
-              setStatus('Cache cleared.');
-              window.setTimeout(() => setStatus(null), 2500);
-            });
+            void clearCache()
+              .then(() => {
+                setStatus('Cache cleared.');
+                window.setTimeout(() => setStatus(null), 2500);
+              })
+              .catch(() => setStatus('Could not clear cache.'));
           }}
           className="rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-[13px] text-[#c9d1d9] hover:border-[#58a6ff]"
         >

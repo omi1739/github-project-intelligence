@@ -74,16 +74,23 @@ export default function App() {
   const [rateLimit, setRateLimit] = useState<number | null>(null);
 
   const refreshRepo = useCallback(async () => {
-    const ref = await getActiveRepo();
-    setRepo(ref);
-    setChecked(true);
-    if (ref) {
-      const existing = await readCachedReport(ref.owner, ref.name);
-      setReport(existing);
-      setCached(Boolean(existing));
-      setError(null);
-      setTab((current) => current);
-    } else {
+    try {
+      const ref = await getActiveRepo();
+      setRepo(ref);
+      setChecked(true);
+      if (ref) {
+        const existing = await readCachedReport(ref.owner, ref.name);
+        setReport(existing);
+        setCached(Boolean(existing));
+        setError(null);
+        setTab((current) => current);
+      } else {
+        setReport(null);
+        setCached(false);
+      }
+    } catch {
+      setRepo(null);
+      setChecked(true);
       setReport(null);
       setCached(false);
     }
