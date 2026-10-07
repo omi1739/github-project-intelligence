@@ -2,16 +2,16 @@
 
 A Chrome extension (Manifest V3) that turns any GitHub repository into an understandable technical
 report: technology stack, project structure, repository health, activity, testing, dependencies,
-code-quality and security signals — with an optional AI assistant that explains the results.
+code-quality and security signals. No backend, no database, no Docker — everything runs in the
+browser.
 
 Built exactly to the roadmap in `Github Extenction.pdf`:
 
 - **V1** — repo detection, Analyze button, GitHub API integration, overview, language/framework
   detection, structure, README analysis, activity, health score, local caching, loading/error states
 - **V2** — dependency, testing, CI/CD, security, code-quality and architecture-inference analyzers
-- **V4** — pluggable AI layer (OpenAI / Anthropic / Ollama / OpenAI-compatible) with secret redaction
-
-No backend, no database, no Docker. V1+V2 run entirely inside the browser.
+- **V4** — pluggable AI layer (OpenAI / Anthropic / Ollama / OpenAI-compatible) with secret
+  redaction — code exists, UI intentionally hidden for now
 
 ## Load it in Chrome / Edge / Brave
 
@@ -85,21 +85,21 @@ src/
   README/manifest/source samples come from `raw.githubusercontent.com`. Reports are cached in
   `chrome.storage.local` (TTL configurable, default 30 min).
 
-## GitHub token (recommended)
+## AI assistant (V4) — currently hidden
 
-Unauthenticated GitHub API: 60 requests/hour. With a read-only fine-grained token: 5,000/hour.
-Add it under **Options → GitHub API**. It is stored only in `chrome.storage.local`.
+The AI tab and AI options are **removed from the UI for now**. The provider layer still exists in
+`src/services/ai.ts` (OpenAI / Anthropic / Ollama / OpenAI-compatible with secret redaction) and can
+be re-enabled by adding the `ai` tab back in `src/sidepanel/App.tsx` and the provider section in
+`src/options/OptionsApp.tsx`.
 
-## AI assistant (V4)
+Nothing in the current UI makes network calls other than the GitHub API.
 
-Enable a provider under **Options → AI provider**:
+## GitHub token (optional)
 
-- **OpenAI / Anthropic** — API key + optional custom base URL
-- **Ollama** — local models, no key needed (e.g. `http://localhost:11434`)
-- **Custom** — any OpenAI-compatible endpoint
-
-The assistant answers questions ("How does authentication work?", "What should I learn first?")
-using the analysis report as context.
+Not required. Unauthenticated GitHub API: 60 requests/hour (~8 requests per analysis, so roughly
+6–7 repositories per hour, results cached for 30 minutes by default). Add a read-only token under
+**Options → GitHub API** only if you hit that limit (5,000/hour with a token). It is stored only in
+`chrome.storage.local`.
 
 ## Testing
 

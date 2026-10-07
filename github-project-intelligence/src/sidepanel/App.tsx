@@ -14,7 +14,6 @@ import {
   SecuritySection,
   TestingSection,
 } from './components/sections/CodeSections';
-import { AiSection } from './components/sections/AiSection';
 import { OverviewSection } from './components/sections/OverviewSection';
 
 const TABS: { id: ReportTab; label: string }[] = [
@@ -26,7 +25,6 @@ const TABS: { id: ReportTab; label: string }[] = [
   { id: 'testing', label: 'Testing' },
   { id: 'quality', label: 'Quality' },
   { id: 'security', label: 'Security' },
-  { id: 'ai', label: 'AI' },
 ];
 
 async function getActiveRepo(): Promise<RepoRef | null> {
@@ -159,8 +157,6 @@ export default function App() {
         return <QualitySection report={report} />;
       case 'security':
         return <SecuritySection report={report} />;
-      case 'ai':
-        return <AiSection report={report} />;
       default:
         return null;
     }
