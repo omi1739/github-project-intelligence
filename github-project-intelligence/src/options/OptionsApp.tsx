@@ -53,8 +53,10 @@ export function OptionsApp() {
           onChange={(event) => update({ githubToken: event.target.value.trim() })}
         />
         <p className="mt-2 text-[11px] leading-relaxed text-[#8b949e]">
-          Without a token you get 60 API requests/hour; with a read-only token 5,000/hour. Create a
-          fine-grained token with <strong>read-only</strong> access to public repositories:{' '}
+          Without a token you get 60 API requests/hour; with a read-only token 5,000/hour. A token
+          also enables <strong>private repository analysis</strong>: create a fine-grained token with{' '}
+          <strong>read-only</strong> access to the repositories you want to analyze (Repository
+          contents → Read-only):{' '}
           <a
             className="text-[#58a6ff] underline"
             href="https://github.com/settings/tokens"

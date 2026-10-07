@@ -94,22 +94,40 @@ be re-enabled by adding the `ai` tab back in `src/sidepanel/App.tsx` and the pro
 
 Nothing in the current UI makes network calls other than the GitHub API.
 
-## GitHub token (optional)
+## GitHub token (optional, enables private repos)
 
-Not required. Unauthenticated GitHub API: 60 requests/hour (~8 requests per analysis, so roughly
-6–7 repositories per hour, results cached for 30 minutes by default). Add a read-only token under
-**Options → GitHub API** only if you hit that limit (5,000/hour with a token). It is stored only in
-`chrome.storage.local`.
+Not required for public repositories. Unauthenticated GitHub API: 60 requests/hour (~8 requests
+per analysis, so roughly 6–7 repositories per hour, results cached for 30 minutes by default). Add
+a token under **Options → GitHub API** to get 5,000 requests/hour **and to analyze private
+repositories** — create a fine-grained token with read-only access to the repositories you want
+(Repository contents → Read-only). The token is stored only in `chrome.storage.local` and is sent
+only to `api.github.com`.
+
+## Analysis coverage
+
+- **Stack detection**: JavaScript/TypeScript (npm manifests), PHP (composer.json, Laravel,
+  Symfony, CodeIgniter, WordPress, PHPUnit, PHPStan), Python (requirements.txt, Django, Flask,
+  FastAPI, pytest), Ruby (Rails, RSpec), Java (Spring), Go — plus generic file-based language
+  detection (`.php`, `.py`, `.rb`, `.go`, `.java`, `.cs`, `.kt` …).
+- **Dependencies**: `package.json`, `composer.json`, `requirements.txt` with lockfile detection
+  (npm, yarn, pnpm, bun, composer, poetry, pip, bundler, go, cargo).
+- **Structure**: directory groups (including `includes/`, `tools/`, `uploads/` and unmatched
+  "feature modules" directories), architecture inference with a PHP-specific rule and
+  language-aware fallbacks.
+- **Testing**: Vitest, Jest, Playwright, Cypress, Mocha, PHPUnit, Pest, pytest, Tox, RSpec —
+  matched from config files, manifests and test file naming (`*.test.ts`, `*Test.php`, `*_test.py`).
+- **Quality**: large files excluding vendored/minified/generated assets (`vendor/`,
+  `node_modules/`, `*.min.css`, lockfiles …).
+- **Privacy**: secret-like patterns are scanned locally and redacted before display.
 
 ## Testing
 
-26 unit tests cover the analysis engine: stack detection, structure/architecture inference,
-health scoring, testing detection, dependency parsing, security signals, README intelligence,
-redaction, URL parsing and the end-to-end `buildReport()` pipeline.
+33 unit tests cover the analysis engine: stack detection, structure/architecture inference,
+health scoring, testing detection, multi-language dependency parsing (npm/composer/pip), security
+signals, README intelligence, redaction, URL parsing and the end-to-end `buildReport()` pipeline.
 
 ## Roadmap (not built yet)
 
-- Private repository support (token already wired)
 - Registry integration for outdated-dependency checks
 - Report export (Markdown/PDF)
 - Architecture graphs and full static analysis

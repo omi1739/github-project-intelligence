@@ -1,3 +1,5 @@
+import type { ManifestKind } from '../utils/manifest';
+
 export type Confidence = 'high' | 'medium' | 'low';
 
 export interface Evidence {
@@ -76,8 +78,19 @@ export interface ParsedDependency {
   scope: 'production' | 'development';
 }
 
+export type PackageManager =
+  | 'npm'
+  | 'yarn'
+  | 'pnpm'
+  | 'composer'
+  | 'pip'
+  | 'bundler'
+  | 'go'
+  | 'cargo'
+  | 'unknown';
+
 export interface DependencyReport {
-  packageManager: 'npm' | 'yarn' | 'pnpm' | 'unknown';
+  packageManager: PackageManager;
   production: ParsedDependency[];
   development: ParsedDependency[];
   manifestPaths: string[];
@@ -228,6 +241,7 @@ export interface AnalysisContext {
 export interface PackageJsonFile {
   path: string;
   content: string;
+  kind?: ManifestKind;
 }
 
 export interface CollectorResult {

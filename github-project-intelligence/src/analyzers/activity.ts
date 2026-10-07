@@ -1,5 +1,6 @@
 import type { AnalysisContext, CommitActivity, Finding, OverviewReport } from '../models/types';
 import { daysSince, formatRelative } from '../utils/format';
+import { parseManifestDeps } from '../utils/manifest';
 
 export function analyzeActivity(activity: CommitActivity): Finding[] {
   const findings: Finding[] = [];
@@ -38,37 +39,43 @@ export function buildOverview(context: AnalysisContext): OverviewReport {
   const stackNames = new Set<string>();
 
   for (const manifest of context.packageJson) {
-    try {
-      const parsed = JSON.parse(manifest.content) as {
-        dependencies?: Record<string, string>;
-        devDependencies?: Record<string, string>;
-      };
-      for (const name of Object.keys({ ...parsed.dependencies, ...parsed.devDependencies })) {
-        stackNames.add(name);
-      }
-    } catch {
-      /* ignore */
+    const deps = parseManifestDeps(manifest.path, manifest.content);
+    for (const dep of [...deps.production, ...deps.development]) {
+      stackNames.add(dep.name);
     }
   }
 
-  const framework = ['next', 'nuxt', 'vue', '@angular/core', 'svelte', 'react']
-    .find((dep) => stackNames.has(dep))
-    ?.replace('next', 'Next.js')
-    .replace('nuxt', 'Nuxt')
-    .replace('vue', 'Vue.js')
-    .replace('@angular/core', 'Angular')
-    .replace('svelte', 'Svelte')
-    .replace('react', 'React') ?? null;
+  const framework = [
+    ['next', 'Next.js'],
+    ['nuxt', 'Nuxt'],
+    ['vue', 'Vue.js'],
+    ['@angular/core', 'Angular'],
+    ['svelte', 'Svelte'],
+    ['react', 'React'],
+    ['laravel/framework', 'Laravel'],
+    ['symfony/symfony', 'Symfony'],
+    ['django', 'Django'],
+    ['flask', 'Flask'],
+    ['fastapi', 'FastAPI'],
+    ['rails', 'Ruby on Rails'],
+    ['spring-boot', 'Spring Boot'],
+  ]
+    .find(([dep]) => stackNames.has(dep as string))
+    ?.[1] ?? null;
 
   const database = [
     ['mongodb', 'MongoDB'],
     ['mongoose', 'MongoDB'],
     ['pg', 'PostgreSQL'],
+    ['psycopg2', 'PostgreSQL'],
     ['mysql2', 'MySQL'],
+    ['pymysql', 'MySQL'],
     ['prisma', 'Prisma'],
     ['@prisma/client', 'Prisma'],
     ['drizzle-orm', 'Drizzle'],
     ['better-sqlite3', 'SQLite'],
+    ['doctrine/orm', 'Doctrine ORM'],
+    ['sqlalchemy', 'SQLAlchemy'],
   ]
     .find(([dep]) => stackNames.has(dep as string))?.[1] ?? null;
 
@@ -78,6 +85,7 @@ export function buildOverview(context: AnalysisContext): OverviewReport {
     ['@clerk/nextjs', 'Clerk'],
     ['passport', 'Passport.js'],
     ['jsonwebtoken', 'JWT'],
+    ['laravel/sanctum', 'Laravel Sanctum'],
   ]
     .find(([dep]) => stackNames.has(dep as string))?.[1] ?? null;
 
@@ -88,11 +96,27 @@ export function buildOverview(context: AnalysisContext): OverviewReport {
       ? 'active'
       : 'dormant';
 
-  const type = database || stackNames.has('express') || stackNames.has('fastify')
+  const serverSide =
+    stackNames.has('express') ||
+    stackNames.has('fastify') ||
+    stackNames.has('@nestjs/core') ||
+    stackNames.has('laravel/framework') ||
+    stackNames.has('django') ||
+    stackNames.has('flask') ||
+    stackNames.has('fastapi') ||
+    stackNames.has('rails');
+
+  const backendLanguage = ['PHP', 'Python', 'Ruby', 'Java', 'Go', 'C#'].includes(
+    repo.language ?? '',
+  );
+
+  const type = database || serverSide
     ? 'Full-stack application'
     : framework
       ? 'Frontend application'
-      : 'Software project';
+      : backendLanguage
+        ? 'Backend / server-rendered application'
+        : 'Software project';
 
   return {
     type,

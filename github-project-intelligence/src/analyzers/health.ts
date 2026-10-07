@@ -185,7 +185,9 @@ function dependenciesScore(
   }
 
   const hasLockfile = context.tree.some((node) =>
-    /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|poetry\.lock|Cargo\.lock|go\.sum)$/.test(node.path),
+    /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lockb|composer\.lock|poetry\.lock|Pipfile\.lock|Cargo\.lock|go\.sum|Gemfile\.lock)$/.test(
+      node.path,
+    ),
   );
   if (hasLockfile) {
     score += 40;

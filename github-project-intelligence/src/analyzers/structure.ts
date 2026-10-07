@@ -9,6 +9,7 @@ const GROUP_PATTERNS: { label: string; pattern: RegExp }[] = [
   { label: 'Frontend / UI', pattern: /(^|\/)(components|pages|app|views|screens|layouts|styles|public)$/ },
   { label: 'API routes', pattern: /(^|\/)(api|routes|controllers|endpoints)$/ },
   { label: 'Services / business logic', pattern: /(^|\/)(services|lib|hooks|use|domain|use-cases)$/ },
+  { label: 'Application code', pattern: /(^|\/)(includes|inc|core|classes|modules)$/ },
   { label: 'Data / models', pattern: /(^|\/)(models|prisma|database|db|migrations|entities|schemas)$/ },
   { label: 'Authentication', pattern: /(^|\/)(auth|authentication|authorization)$/ },
   { label: 'Tests', pattern: /(^|\/)(tests?|__tests__|specs?|e2e|cypress)$/ },
@@ -16,11 +17,18 @@ const GROUP_PATTERNS: { label: string; pattern: RegExp }[] = [
   { label: 'Utilities', pattern: /(^|\/)(utils?|helpers|common|shared|constants)$/ },
   { label: 'Backend / server', pattern: /(^|\/)(server|backend)$/ },
   { label: 'Documentation', pattern: /(^|\/)(docs?|documentation)$/ },
+  { label: 'Tools & automation', pattern: /(^|\/)(tools|cron|bin|jobs|queue)$/ },
+  { label: 'Storage / uploads', pattern: /(^|\/)(uploads|storage|files|media|assets)$/ },
 ];
+
+const SOURCE_FILE_PATTERN =
+  /\.(ts|tsx|js|jsx|php|py|rb|java|go|cs|cpp|c|vue|svelte|kt|rs|swift|sh|pl|ps1|sql)$/i;
 
 const IMPORTANT_FILE_RULES: { path: RegExp; reason: string }[] = [
   { path: /(^|\/)README\.md$/i, reason: 'Project overview and setup instructions.' },
   { path: /(^|\/)package\.json$/, reason: 'Reveals the technology stack and scripts.' },
+  { path: /(^|\/)composer\.json$/, reason: 'PHP dependencies, scripts and autoloading.' },
+  { path: /(^|\/)index\.php$/, reason: 'Likely application entry point.' },
   { path: /(^|\/)src\/app\/layout\.(tsx|jsx|ts|js)$/, reason: 'Root layout of the application shell.' },
   { path: /(^|\/)src\/app\/page\.(tsx|jsx|ts|js)$/, reason: 'Primary entry route.' },
   { path: /(^|\/)(src\/)?index\.(tsx|jsx|ts|js)$/, reason: 'Application entry point.' },
@@ -57,6 +65,10 @@ function detectArchitecture(context: AnalysisContext): StructureReport['architec
     has(/(^|\/)controllers(\/|$)/) &&
     has(/(^|\/)views?(\/|$)/) &&
     has(/(^|\/)models(\/|$)/);
+  const phpApp =
+    (context.repo.language === 'PHP' || has(/(^|\/)index\.php$/)) &&
+    has(/(^|\/)(includes|inc|classes|src)(\/|$)/) &&
+    has(/(^|\/)(config|database|db|models)(\/|$)/);
 
   if (monorepo) {
     for (const path of ['apps/', 'packages/']) evidence.push({ label: path, source: 'file tree' });
@@ -68,6 +80,13 @@ function detectArchitecture(context: AnalysisContext): StructureReport['architec
     }
     return { label: 'MVC-style architecture', confidence: 'medium', evidence };
   }
+  if (phpApp) {
+    evidence.push({ label: 'includes/ with config and database directories', source: 'file tree' });
+    if (context.repo.language) {
+      evidence.push({ label: `primary language: ${context.repo.language}`, source: 'GitHub languages' });
+    }
+    return { label: 'Server-rendered PHP application', confidence: 'medium', evidence };
+  }
   if (layeredHits.length >= 2) {
     for (const hit of layeredHits) evidence.push({ label: hit.label, source: 'file tree' });
     return { label: 'Likely layered architecture', confidence: 'medium', evidence };
@@ -78,6 +97,14 @@ function detectArchitecture(context: AnalysisContext): StructureReport['architec
   }
   if (paths.length > 0) {
     evidence.push({ label: 'flat or unconventional layout', source: 'file tree' });
+    if (context.repo.language) {
+      evidence.push({ label: `primary language: ${context.repo.language}`, source: 'GitHub languages' });
+      return {
+        label: `${context.repo.language} project with a custom directory layout`,
+        confidence: 'low',
+        evidence,
+      };
+    }
     return { label: 'Unclassified structure', confidence: 'low', evidence };
   }
   return { label: 'Unknown', confidence: 'low', evidence };
@@ -98,6 +125,32 @@ export function analyzeStructure(context: AnalysisContext): StructureReport {
       ...new Set(context.tree.filter((node) => node.type === 'tree' && pattern.test(node.path)).map((n) => n.path)),
     ].slice(0, 8),
   })).filter((group) => group.paths.length > 0);
+
+  const matched = new Set(groups.flatMap((group) => group.paths));
+  const vendored = /(vendor|node_modules|dist|build|third[-_]?party)\//;
+  const featureDirs = [
+    ...new Set(
+      context.tree
+        .filter(
+          (node) =>
+            node.type === 'tree' &&
+            !node.path.includes('/') &&
+            !matched.has(node.path) &&
+            context.tree.some(
+              (file) =>
+                file.type === 'blob' &&
+                file.path.startsWith(`${node.path}/`) &&
+                SOURCE_FILE_PATTERN.test(file.path) &&
+                !vendored.test(file.path),
+            ),
+        )
+        .map((node) => node.path),
+    ),
+  ].slice(0, 8);
+
+  if (featureDirs.length > 0) {
+    groups.push({ label: 'Feature modules', paths: featureDirs });
+  }
 
   const importantFiles = IMPORTANT_FILE_RULES.map((rule) => {
     const match = context.tree.find((node) => node.type === 'blob' && rule.path.test(node.path));

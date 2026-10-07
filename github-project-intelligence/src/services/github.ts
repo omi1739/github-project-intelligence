@@ -5,6 +5,7 @@ import type {
   RepoMeta,
   TreeNode,
 } from '../models/types';
+import { detectManifestKind } from '../utils/manifest';
 
 const API = 'https://api.github.com';
 
@@ -106,15 +107,33 @@ export async function fetchTree(
     .map((node) => ({ path: node.path, type: node.type, size: node.size }));
 }
 
-async function fetchFileText(
-  owner: string,
-  name: string,
+async function fetchRepoFile(
+  repo: RepoMeta,
   path: string,
   token?: string,
 ): Promise<string | null> {
+  if (token) {
+    try {
+      const res = await fetch(
+        `${API}/repos/${repo.owner}/${repo.name}/contents/${encodeURI(path)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github.raw',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'User-Agent': 'github-project-intelligence',
+          },
+        },
+      );
+      if (res.ok) return await res.text();
+    } catch {
+      /* fall through to the raw CDN */
+    }
+  }
+
   try {
     const res = await fetch(
-      `https://raw.githubusercontent.com/${owner}/${name}/HEAD/${encodeURI(path)}`,
+      `https://raw.githubusercontent.com/${repo.owner}/${repo.name}/HEAD/${encodeURI(path)}`,
       {
         headers: token
           ? { Authorization: `Bearer ${token}`, 'User-Agent': 'github-project-intelligence' }
@@ -128,8 +147,12 @@ async function fetchFileText(
   }
 }
 
-const PACKAGE_MANIFESTS = [
+const MANIFEST_PATTERN = /(^|\/)(package\.json|composer\.json|requirements[\w.-]*\.txt)$/;
+
+const FALLBACK_MANIFESTS = [
   'package.json',
+  'composer.json',
+  'requirements.txt',
   'backend/package.json',
   'server/package.json',
   'api/package.json',
@@ -143,31 +166,33 @@ async function fetchPackageManifests(
   tree: TreeNode[],
   token?: string,
 ): Promise<PackageJsonFile[]> {
-  const wanted = new Set(PACKAGE_MANIFESTS);
-  const extra = tree
-    .filter((n) => n.type === 'blob' && /(^|\/)package\.json$/.test(n.path))
-    .map((n) => n.path)
-    .filter((p) => !p.includes('node_modules'));
-  const paths = [...new Set([...extra, ...wanted])].filter((p) =>
-    tree.length === 0 ? wanted.has(p) : tree.some((n) => n.path === p),
+  const fromTree = tree
+    .filter((node) => node.type === 'blob' && MANIFEST_PATTERN.test(node.path))
+    .map((node) => node.path)
+    .filter((path) => !/(node_modules|vendor)\//.test(path));
+
+  const candidates =
+    tree.length > 0
+      ? fromTree
+      : FALLBACK_MANIFESTS.filter((path) => MANIFEST_PATTERN.test(path));
+
+  const paths = [...new Set([...fromTree, ...FALLBACK_MANIFESTS])].filter((path) =>
+    tree.length === 0 ? candidates.includes(path) : tree.some((node) => node.path === path),
   );
 
-  const results = await Promise.all(
-    paths.slice(0, 6).map(async (path) => {
-      const content = await fetchFileText(repo.owner, repo.name, path, token);
-      return content ? { path, content } : null;
+  const results: (PackageJsonFile | null)[] = await Promise.all(
+    paths.slice(0, 8).map(async (path) => {
+      const content = await fetchRepoFile(repo, path, token);
+      return content ? { path, content, kind: detectManifestKind(path) } : null;
     }),
   );
   return results.filter((r): r is PackageJsonFile => r !== null);
 }
 
-async function fetchReadme(
-  repo: RepoMeta,
-  token?: string,
-): Promise<string | null> {
+async function fetchReadme(repo: RepoMeta, token?: string): Promise<string | null> {
   const candidates = ['README.md', 'readme.md', 'README.MD', 'docs/README.md'];
   for (const candidate of candidates) {
-    const text = await fetchFileText(repo.owner, repo.name, candidate, token);
+    const text = await fetchRepoFile(repo, candidate, token);
     if (text) return text;
   }
   return null;
@@ -215,7 +240,7 @@ async function fetchActivity(
     lastCommitAt:
       lastCommit?.commit?.author?.date ??
       (repo.pushedAt ? new Date(repo.pushedAt).toISOString() : null),
-    contributors: contributorList.length || Math.max(1, contributorList.length),
+    contributors: contributorList.length,
     releases: releaseList.length,
     openPullRequests: pulls.status === 'fulfilled' ? pulls.value.total_count : 0,
     openIssues: issues.status === 'fulfilled' ? issues.value.total_count : 0,
@@ -267,7 +292,7 @@ async function fetchSampleSourceFiles(
 
   const contents = await Promise.all(
     candidates.map(async (node) => {
-      const text = await fetchFileText(repo.owner, repo.name, node.path, token);
+      const text = await fetchRepoFile(repo, node.path, token);
       return text ? ([node.path, text] as const) : null;
     }),
   );

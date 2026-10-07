@@ -1,4 +1,5 @@
 import type { AnalysisContext, Evidence, TestingReport } from '../models/types';
+import { parseManifestDeps } from '../utils/manifest';
 
 const FRAMEWORK_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: 'Vitest', pattern: /(^|\/)vitest\.config\.(js|ts)$/ },
@@ -6,9 +7,30 @@ const FRAMEWORK_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: 'Playwright', pattern: /(^|\/)playwright\.config\.(js|ts)$/ },
   { name: 'Cypress', pattern: /(^|\/)cypress\/(e2e|integration|fixtures)\// },
   { name: 'Mocha', pattern: /(^|\/)\.mocharc\.(js|json|ya?ml)$/ },
+  { name: 'PHPUnit', pattern: /(^|\/)phpunit\.xml(\.dist)?$/ },
+  { name: 'Pest', pattern: /(^|\/)Pest\.php$/ },
+  { name: 'pytest', pattern: /(^|\/)(pytest\.ini|conftest\.py)$/ },
+  { name: 'Tox', pattern: /(^|\/)tox\.ini$/ },
+  { name: 'RSpec', pattern: /(^|\/)\.rspec$/ },
+  { name: 'Go test suite', pattern: /(^|\/)\w+_test\.(go)$/ },
 ];
 
-const TEST_FILE_PATTERN = /(^|\/)(__tests__|tests?|specs?)\/.+\.(ts|tsx|js|jsx|py|java|go|rb)$|\.(test|spec)\.(ts|tsx|js|jsx)$/i;
+const FRAMEWORK_DEPS: { name: string; label: string }[] = [
+  { name: 'vitest', label: 'Vitest' },
+  { name: 'jest', label: 'Jest' },
+  { name: '@playwright/test', label: 'Playwright' },
+  { name: 'playwright', label: 'Playwright' },
+  { name: 'cypress', label: 'Cypress' },
+  { name: 'mocha', label: 'Mocha' },
+  { name: 'phpunit/phpunit', label: 'PHPUnit' },
+  { name: 'pestphp/pest', label: 'Pest' },
+  { name: 'behat/behat', label: 'Behat' },
+  { name: 'pytest', label: 'pytest' },
+  { name: 'rspec', label: 'RSpec' },
+];
+
+const TEST_FILE_PATTERN =
+  /(^|\/)(__tests__|tests?|specs?)\/.+\.(ts|tsx|js|jsx|py|java|go|rb|php|cs)$|\.(test|spec)\.(ts|tsx|js|jsx)$|(^|\/)\w+Test\.(php|cs|rb|java)$|(^|\/)[\w.-]+_test\.(py|php|rb)$/i;
 
 const TEST_DIR_PATTERN = /(^|\/)(tests?|__tests__|test_|.*_test|specs?)$/;
 
@@ -16,11 +38,14 @@ const CI_TEST_PATTERN = /(^|\/)\.github\/workflows\/.*(ci|test|check|build).*\.y
 
 function hasTestScript(context: AnalysisContext): boolean {
   return context.packageJson.some((manifest) => {
+    if (manifest.path.endsWith('requirements.txt')) return false;
     try {
       const parsed = JSON.parse(manifest.content) as { scripts?: Record<string, string> };
       return Object.entries(parsed.scripts ?? {}).some(
         ([name, command]) =>
-          name.startsWith('test') && !/no test specified/i.test(command),
+          (name === 'test' || name.startsWith('test:')) &&
+          typeof command === 'string' &&
+          !/no test specified/i.test(command),
       );
     } catch {
       return false;
@@ -43,22 +68,13 @@ export function analyzeTesting(context: AnalysisContext): TestingReport {
 
   if (!framework) {
     for (const manifest of context.packageJson) {
-      try {
-        const parsed = JSON.parse(manifest.content) as {
-          dependencies?: Record<string, string>;
-          devDependencies?: Record<string, string>;
-        };
-        const deps = { ...parsed.dependencies, ...parsed.devDependencies };
-        const known = ['vitest', 'jest', '@playwright/test', 'cypress', 'mocha'];
-        const match = known.find((name) => name in deps);
-        if (match) {
-          framework =
-            match === '@playwright/test' ? 'Playwright' : match.charAt(0).toUpperCase() + match.slice(1);
-          evidence.push({ label: match, source: manifest.path });
-          break;
-        }
-      } catch {
-        /* ignore malformed manifest */
+      const deps = parseManifestDeps(manifest.path, manifest.content);
+      const names = [...deps.production, ...deps.development].map((dep) => dep.name);
+      const match = FRAMEWORK_DEPS.find((candidate) => names.includes(candidate.name));
+      if (match) {
+        framework = match.label;
+        evidence.push({ label: match.name, source: manifest.path });
+        break;
       }
     }
   }

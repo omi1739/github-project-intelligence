@@ -3,13 +3,18 @@ import { formatBytes } from '../utils/format';
 
 const LARGE_FILE_THRESHOLD = 150 * 1024;
 
+const VENDORED_PATTERN = /(^|\/)(vendor|node_modules|dist|build|third[-_]?party|min|assets\/vendor)\//;
+const GENERATED_FILE_PATTERN = /\.(min\.(css|js)|bundle\.(css|js)|map|lock|snap)$/i;
+
 export function analyzeQuality(context: AnalysisContext): CodeQualityReport {
   const largeFiles = context.tree
     .filter(
       (node) =>
         node.type === 'blob' &&
         (node.size ?? 0) >= LARGE_FILE_THRESHOLD &&
-        !/\.(png|jpe?g|gif|svg|webp|ico|pdf|mp4|zip|woff2?|ttf)$/i.test(node.path),
+        !/\.(png|jpe?g|gif|svg|webp|ico|pdf|mp4|zip|woff2?|ttf)$/i.test(node.path) &&
+        !VENDORED_PATTERN.test(node.path) &&
+        !GENERATED_FILE_PATTERN.test(node.path),
     )
     .sort((a, b) => (b.size ?? 0) - (a.size ?? 0))
     .slice(0, 8)

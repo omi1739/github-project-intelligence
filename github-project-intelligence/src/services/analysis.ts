@@ -42,13 +42,14 @@ export async function analyzeRepository(
   }
 
   try {
+    const startedAt = Date.now();
     const collected = await collectRepository(owner, name, {
       token: settings.githubToken || undefined,
       onProgress: options.onProgress,
     });
 
     options.onProgress?.('Running analysis engine');
-    const report = buildReport(collected);
+    const report = buildReport(collected, startedAt);
     await writeCache(key, report, settings.cacheTtlMinutes);
 
     return { report, cached: false, rateLimitRemaining: getRateLimitRemaining() };

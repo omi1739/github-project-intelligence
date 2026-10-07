@@ -4,6 +4,7 @@ import type {
   Finding,
   TechEntry,
 } from '../models/types';
+import { parseManifestDeps } from '../utils/manifest';
 
 interface DepRule {
   dep: string;
@@ -43,6 +44,32 @@ const DEP_RULES: DepRule[] = [
   { dep: 'koa', name: 'Koa', category: 'backend' },
   { dep: 'hono', name: 'Hono', category: 'backend' },
 
+  { dep: 'laravel/framework', name: 'Laravel', category: 'backend' },
+  { dep: 'symfony/symfony', name: 'Symfony', category: 'backend' },
+  { dep: 'symfony/framework-bundle', name: 'Symfony', category: 'backend' },
+  { dep: 'yiisoft/yii2', name: 'Yii', category: 'backend' },
+  { dep: 'codeigniter4/framework', name: 'CodeIgniter', category: 'backend' },
+  { dep: 'cakephp/cakephp', name: 'CakePHP', category: 'backend' },
+  { dep: 'slim/slim', name: 'Slim', category: 'backend' },
+  { dep: 'laravel/sanctum', name: 'Laravel Sanctum', category: 'authentication' },
+  { dep: 'django', name: 'Django', category: 'backend' },
+  { dep: 'flask', name: 'Flask', category: 'backend' },
+  { dep: 'fastapi', name: 'FastAPI', category: 'backend' },
+  { dep: 'uvicorn', name: 'Uvicorn', category: 'backend' },
+  { dep: 'rails', name: 'Ruby on Rails', category: 'backend' },
+  { dep: 'sinatra', name: 'Sinatra', category: 'backend' },
+  { dep: 'spring-boot', name: 'Spring Boot', category: 'backend' },
+  { dep: 'gin-gonic/gin', name: 'Gin', category: 'backend' },
+  { dep: 'labstack/echo', name: 'Echo', category: 'backend' },
+  { dep: 'go fiber', name: 'Fiber', category: 'backend' },
+
+  { dep: 'doctrine/orm', name: 'Doctrine ORM', category: 'database' },
+  { dep: 'illuminate/database', name: 'Eloquent/Laravel DB', category: 'database' },
+  { dep: 'sqlalchemy', name: 'SQLAlchemy', category: 'database' },
+  { dep: 'psycopg2', name: 'PostgreSQL', category: 'database' },
+  { dep: 'pymysql', name: 'MySQL', category: 'database' },
+  { dep: 'activerecord', name: 'Active Record', category: 'database' },
+
   { dep: 'mongodb', name: 'MongoDB', category: 'database' },
   { dep: 'mongoose', name: 'Mongoose', category: 'database' },
   { dep: 'pg', name: 'PostgreSQL', category: 'database' },
@@ -75,6 +102,11 @@ const DEP_RULES: DepRule[] = [
   { dep: 'cypress', name: 'Cypress', category: 'testing' },
   { dep: 'mocha', name: 'Mocha', category: 'testing' },
   { dep: '@testing-library/react', name: 'Testing Library', category: 'testing' },
+  { dep: 'phpunit/phpunit', name: 'PHPUnit', category: 'testing' },
+  { dep: 'pestphp/pest', name: 'Pest', category: 'testing' },
+  { dep: 'behat/behat', name: 'Behat', category: 'testing' },
+  { dep: 'pytest', name: 'pytest', category: 'testing' },
+  { dep: 'rspec', name: 'RSpec', category: 'testing' },
 
   { dep: 'typescript', name: 'TypeScript', category: 'tooling' },
   { dep: 'eslint', name: 'ESLint', category: 'tooling' },
@@ -84,6 +116,12 @@ const DEP_RULES: DepRule[] = [
   { dep: 'husky', name: 'Husky', category: 'tooling' },
   { dep: 'lint-staged', name: 'lint-staged', category: 'tooling' },
   { dep: 'zod', name: 'Zod', category: 'tooling' },
+  { dep: 'phpstan', name: 'PHPStan', category: 'tooling' },
+  { dep: 'vimeo/psalm', name: 'Psalm', category: 'tooling' },
+  { dep: 'friendsofphp/php-cs-fixer', name: 'PHP CS Fixer', category: 'tooling' },
+  { dep: 'pylint', name: 'Pylint', category: 'tooling' },
+  { dep: 'flake8', name: 'flake8', category: 'tooling' },
+  { dep: 'black', name: 'Black', category: 'tooling' },
 
   { dep: 'vercel', name: 'Vercel', category: 'deployment' },
   { dep: 'netlify', name: 'Netlify', category: 'deployment' },
@@ -120,6 +158,19 @@ const FILE_RULES: FileRule[] = [
   { test: /(^|\/)Cargo\.toml$/, name: 'Rust', category: 'backend' },
   { test: /(^|\/)composer\.json$/, name: 'PHP', category: 'backend' },
   { test: /(^|\/)gemfile$/i, name: 'Ruby', category: 'backend' },
+  { test: /(^|\/)artisan$/, name: 'Laravel', category: 'backend', confidence: 'high' },
+  { test: /(^|\/)manage\.py$/, name: 'Django', category: 'backend', confidence: 'high' },
+  { test: /(^|\/)wp-config\.php$/, name: 'WordPress', category: 'backend', confidence: 'high' },
+  { test: /\.php$/i, name: 'PHP', category: 'backend', confidence: 'medium' },
+  { test: /\.py$/i, name: 'Python', category: 'backend', confidence: 'medium' },
+  { test: /\.rb$/i, name: 'Ruby', category: 'backend', confidence: 'medium' },
+  { test: /\.go$/i, name: 'Go', category: 'backend', confidence: 'medium' },
+  { test: /\.java$/i, name: 'Java', category: 'backend', confidence: 'medium' },
+  { test: /\.cs$/i, name: 'C# / .NET', category: 'backend', confidence: 'medium' },
+  { test: /\.kt$/i, name: 'Kotlin', category: 'backend', confidence: 'medium' },
+  { test: /\.sql$/i, name: 'SQL', category: 'database', confidence: 'low' },
+  { test: /(^|\/)phpunit\.xml(\.dist)?$/, name: 'PHPUnit', category: 'testing', confidence: 'medium' },
+  { test: /(^|\/)pytest\.ini$/, name: 'pytest', category: 'testing', confidence: 'medium' },
   { test: /(^|\/)\.env\.example$/, name: 'Environment config', category: 'tooling' },
   { test: /(^|\/)playwright\.config\.(js|ts)$/, name: 'Playwright', category: 'testing' },
   { test: /(^|\/)jest\.config\.(js|ts|mjs|cjs)$/, name: 'Jest', category: 'testing' },
@@ -154,23 +205,11 @@ export function detectStack(context: AnalysisContext): StackCategoriesInput {
   const manifests = context.packageJson;
 
   for (const manifest of manifests) {
-    let parsed: {
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-    };
-    try {
-      parsed = JSON.parse(manifest.content);
-    } catch {
-      continue;
-    }
+    const deps = parseManifestDeps(manifest.path, manifest.content);
 
     const all = [
-      ...Object.keys(parsed.dependencies ?? {}).map(
-        (dep) => [dep, 'production'] as const,
-      ),
-      ...Object.keys(parsed.devDependencies ?? {}).map(
-        (dep) => [dep, 'development'] as const,
-      ),
+      ...deps.production.map((dep) => [dep.name, 'production'] as const),
+      ...deps.development.map((dep) => [dep.name, 'development'] as const),
     ];
 
     for (const [dep, scope] of all) {
@@ -185,8 +224,11 @@ export function detectStack(context: AnalysisContext): StackCategoriesInput {
     }
   }
 
+  const vendored = /(^|\/)(node_modules|vendor|dist|build|third[-_]?party)\//;
   for (const rule of FILE_RULES) {
-    const matches = context.tree.filter((node) => node.type === 'blob' && rule.test.test(node.path));
+    const matches = context.tree.filter(
+      (node) => node.type === 'blob' && rule.test.test(node.path) && !vendored.test(node.path),
+    );
     if (matches.length === 0) continue;
     pushUnique(categories[rule.category], {
       name: rule.name,
