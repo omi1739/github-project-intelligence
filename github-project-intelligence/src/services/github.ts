@@ -44,12 +44,18 @@ async function gh<T>(path: string, options: RequestOptions = {}): Promise<T> {
 
   if (!res.ok) {
     const rateLimited = res.status === 403 && remaining === '0';
-    const message =
-      res.status === 401
-        ? 'GitHub rejected the configured token (401). Check it in Options.'
-        : rateLimited
-          ? 'GitHub API rate limit reached. Add a personal access token in Options.'
-          : `GitHub API error ${res.status} for ${path}`;
+    const isRepoLookup = /^\/repos\/[^/]+\/[^/]+/.test(path);
+    let message: string;
+    if (res.status === 404 && isRepoLookup) {
+      const fullName = path.match(/^\/repos\/([^/]+\/[^/]+)/)?.[1] ?? '';
+      message = `Repository "${fullName}" was not found (404). Check the URL — if it is a private repository, add a GitHub token in Options.`;
+    } else if (res.status === 401) {
+      message = 'GitHub rejected the configured token (401). Check it in Options.';
+    } else if (rateLimited) {
+      message = 'GitHub API rate limit reached. Add a personal access token in Options.';
+    } else {
+      message = `GitHub API error ${res.status} for ${path}`;
+    }
     throw new GitHubApiError(message, res.status, rateLimited);
   }
   return (await res.json()) as T;
