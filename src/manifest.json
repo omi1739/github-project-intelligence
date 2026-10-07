@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GitHub Project Intelligence",
   "version": "0.1.0",
-  "description": "Turns any GitHub repository into an understandable technical report: stack, structure, health, activity, security and AI-assisted explanation.",
+  "description": "Turns any GitHub repository into an understandable technical report: technology stack, structure, health, activity, testing, dependencies and security signals.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -33,6 +33,5 @@
   "options_page": "src/options/index.html",
   "permissions": ["sidePanel", "storage"],
   "host_permissions": ["https://github.com/*", "https://api.github.com/*", "https://raw.githubusercontent.com/*"],
-  "optional_host_permissions": ["https://*/*"],
   "minimum_chrome_version": "116"
 }
